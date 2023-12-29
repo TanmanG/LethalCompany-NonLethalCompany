@@ -1,12 +1,12 @@
-# **Forest Giant Motionsense**
+# **Non-Lethal Company**
 
-## **Add a little counterplay to Forest Giants!**
+## **Work for The Company with the whole family!**
 
-**This mod makes Forest Giants only act (look at and start chasing) moving players.**
+**This mod (should) disable all blood effects and dismemberment.**
 
-It's frustrating to have to hike a mile back with 80lbs of scrap, only to get stuck between a rock and a Forest Giant. You're left either having to strip down to an empty inventory and flee, or accept your fate and be taken.
+Queasy at the sight of blood? Want to play but you or a loved one doesn't appreciate the violence? Simply want a cleaner experience? Look no further!
 
-This mod aims to fix that by tweaking the Forest Giant AI to only stare and consequently chase players who have moved within the last second.
+This mod aims to remove all sources of blood, gore, and dismemberment from the game. I believe all bases are covered, but if you find something that's slipped through the cracks, shoot me a message and I'll update it ASAP.
 
 
 ## **Encounter an issue?**
@@ -15,4 +15,4 @@ Send me a message on Discord @tanmang, or an email at mangomango.dev@gmail.com
 
 
 
-~ Requested by rainycake ~
+~ Requested by Octez ~
