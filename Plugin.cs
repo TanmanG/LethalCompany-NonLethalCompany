@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 using System.Reflection.Emit;
 using BepInEx;
@@ -19,6 +20,36 @@ namespace NonLethalCompany
 			Harmony.CreateAndPatchAll(typeof(Plugin));
 			Logger.LogInfo($"Patch applied!");
 		}
+		
+		[HarmonyPatch(typeof(ForestGiantAI), "Start")]
+		[HarmonyPostfix]
+		private static void ForestGiantAnimationSoftPatch(ForestGiantAI __instance)
+		{
+			// Get the clip for the giant eating
+			AnimationClip clip = __instance.creatureAnimator.runtimeAnimatorController.animationClips.First(clip => clip.name.Equals("FGiantEatPlayer"));
+			// Remove the particles
+			clip.events = clip.events.Where(animEvent => !animEvent.functionName.Equals("PlayParticle")).ToArray();
+		}
+		
+		[HarmonyPatch(typeof(ForestGiantAI), "EatPlayerAnimation", MethodType.Enumerator)]
+		[HarmonyTranspiler]
+		private static IEnumerable<CodeInstruction> ForestGiantSoftPatch(IEnumerable<CodeInstruction> instructions)
+		{
+			CodeMatcher matcher = new(instructions);
+			
+			// Patch the bloody face decal on the forest giant
+			matcher.MatchForward(false, 
+			                     new CodeMatch(OpCodes.Ldloc_1),
+			                     new CodeMatch(OpCodes.Ldfld,
+				                     AccessTools.Field(typeof(ForestGiantAI), "bloodOnFaceDecal")),
+			                     new CodeMatch(OpCodes.Ldc_I4_1),
+			                     new CodeMatch(OpCodes.Callvirt, 
+			                                   AccessTools.Method(typeof(Behaviour), "set_enabled")))
+			       .RemoveInstructions(4);
+			
+			return matcher.InstructionEnumeration();
+		}
+
 
 		[HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.SpawnDeadBody))]
 		[HarmonyTranspiler]

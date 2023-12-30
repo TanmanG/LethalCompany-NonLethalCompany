@@ -2,7 +2,7 @@
 
 ## **Work for The Company with the whole family!**
 
-**This mod (should) disable all blood effects and dismemberment.**
+**This mod disables all blood effects and dismemberment.**
 
 Queasy at the sight of blood? Want to play but you or a loved one doesn't appreciate the violence? Simply want a cleaner experience? Look no further!
 
