@@ -1,13 +1,10 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
-using System.Numerics;
 using System.Reflection.Emit;
-using System.Text.RegularExpressions;
 using BepInEx;
 using GameNetcodeStuff;
 using HarmonyLib;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using Vector3 = UnityEngine.Vector3;
 
 namespace NonLethalCompany
@@ -23,6 +20,16 @@ namespace NonLethalCompany
 			Harmony.CreateAndPatchAll(typeof(Plugin));
 			Logger.LogInfo($"Patch applied!");
 			
+		}
+
+		[HarmonyPatch(typeof(CaveDwellerAI), nameof(CaveDwellerAI.Start))]
+		[HarmonyPostfix]
+		private static void ManEaterBloodParticlesSoftPatch(CaveDwellerAI __instance)
+		{
+			ParticleSystem.MainModule mainModule = __instance.killPlayerParticle1.main;
+			mainModule.maxParticles = 0;
+			mainModule.duration = 0;
+			mainModule.startSize = new ParticleSystem.MinMaxCurve(0);
 		}
 		
 		[HarmonyPatch(typeof(KillLocalPlayer), nameof(KillLocalPlayer.KillPlayer))]
@@ -50,11 +57,11 @@ namespace NonLethalCompany
 			                 .ToList()
 			                 .ForEach(particleSystem =>
             {
-				ParticleSystem.EmissionModule particleEmission = particleSystem.emission;
-				particleEmission.enabled = false;
-				particleSystem.Stop();
-				particleSystem.Clear();
-				particleSystem.SetParticles(new ParticleSystem.Particle[]{});
+	            
+	            ParticleSystem.MainModule mainModule = particleSystem.main;
+	            mainModule.maxParticles = 0;
+	            mainModule.duration = 0;
+	            mainModule.startSize = new ParticleSystem.MinMaxCurve(0);
 				Destroy(particleSystem);
             });
 			// Disable the audio on the spike trap.
@@ -79,8 +86,16 @@ namespace NonLethalCompany
 		private static void ButlerBloodParticleSoftPatch(ButlerEnemyAI __instance)
 		{
 			// Remove the particles from the butler's particle emitters.
-			__instance.stabBloodParticle.SetParticles(new ParticleSystem.Particle[]{});
-			__instance.popParticle.SetParticles(new ParticleSystem.Particle[]{});
+			
+			ParticleSystem.MainModule stabParticleSettings = __instance.stabBloodParticle.main;
+			stabParticleSettings.maxParticles = 0;
+			stabParticleSettings.duration = 0;
+			stabParticleSettings.startSize = new ParticleSystem.MinMaxCurve(0);
+			
+			ParticleSystem.MainModule popParticleSettings = __instance.popParticle.main;
+			popParticleSettings.maxParticles = 0;
+			popParticleSettings.duration = 0;
+			popParticleSettings.startSize = new ParticleSystem.MinMaxCurve(0);
 		}
 		[HarmonyPatch(typeof(ButlerEnemyAI), nameof(ButlerEnemyAI.StabPlayerClientRpc))]
 		[HarmonyPostfix]
@@ -104,9 +119,10 @@ namespace NonLethalCompany
 		private static void KnifeBloodParticleSoftPatch(KnifeItem __instance)
 		{
 			// Remove the particles from the knife particle emitter.
-			__instance.bloodParticle.SetParticles(new ParticleSystem.Particle[]{});
-			__instance.bloodParticle.Stop();
-			__instance.bloodParticle.Clear();
+			ParticleSystem.MainModule mainModule = __instance.bloodParticle.main;
+			mainModule.maxParticles = 0;
+			mainModule.duration = 0;
+			mainModule.startSize = new ParticleSystem.MinMaxCurve(0);
 		}
 
 		private static GameObject _spikePrefab;
@@ -129,11 +145,10 @@ namespace NonLethalCompany
 			                 .ToList()
 			                 .ForEach(particleSystem =>
 			                  {
-				                  ParticleSystem.EmissionModule particleEmission = particleSystem.emission;
-				                  particleEmission.enabled = false;
-				                  particleSystem.Stop();
-				                  particleSystem.Clear();
-				                  particleSystem.SetParticles(new ParticleSystem.Particle[]{});
+				                  ParticleSystem.MainModule mainModule = particleSystem.main;
+				                  mainModule.maxParticles = 0;
+				                  mainModule.duration = 0;
+				                  mainModule.startSize = new ParticleSystem.MinMaxCurve(0);
 				                  Destroy(particleSystem);
 			                  });
 			// Disable the audio on the spike trap.
