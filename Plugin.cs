@@ -26,10 +26,15 @@ namespace NonLethalCompany
 		[HarmonyPostfix]
 		private static void ManEaterBloodParticlesSoftPatch(CaveDwellerAI __instance)
 		{
-			ParticleSystem.MainModule mainModule = __instance.killPlayerParticle1.main;
-			mainModule.maxParticles = 0;
-			mainModule.duration = 0;
-			mainModule.startSize = new ParticleSystem.MinMaxCurve(0);
+			ParticleSystem.MainModule playerKillParticleA = __instance.killPlayerParticle1.main;
+			playerKillParticleA.maxParticles = 0;
+			playerKillParticleA.duration = 0;
+			playerKillParticleA.startSize = new ParticleSystem.MinMaxCurve(0);
+            
+			ParticleSystem.MainModule playerKillParticleB = __instance.killPlayerParticle2.main;
+			playerKillParticleB.maxParticles = 0;
+			playerKillParticleB.duration = 0;
+			playerKillParticleB.startSize = new ParticleSystem.MinMaxCurve(0);
 		}
 		
 		[HarmonyPatch(typeof(KillLocalPlayer), nameof(KillLocalPlayer.KillPlayer))]
