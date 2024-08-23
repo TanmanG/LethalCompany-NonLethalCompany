@@ -2,10 +2,13 @@
 using System.Linq;
 using System.Numerics;
 using System.Reflection.Emit;
+using System.Text.RegularExpressions;
 using BepInEx;
 using GameNetcodeStuff;
 using HarmonyLib;
 using UnityEngine;
+using UnityEngine.SceneManagement;
+using Vector3 = UnityEngine.Vector3;
 
 namespace NonLethalCompany
 {
@@ -19,7 +22,167 @@ namespace NonLethalCompany
 			Logger.LogInfo($"Patch applying...");
 			Harmony.CreateAndPatchAll(typeof(Plugin));
 			Logger.LogInfo($"Patch applied!");
+			
 		}
+		
+		[HarmonyPatch(typeof(KillLocalPlayer), nameof(KillLocalPlayer.KillPlayer))]
+		[HarmonyPrefix]
+		private static bool FanRoomDecapitateSoftPatch(KillLocalPlayer __instance)
+		{
+			if (__instance.causeOfDeath != CauseOfDeath.Fan)
+				return true;
+			
+			// Set the death animation to not be decapitation.
+			__instance.deathAnimation = 0;
+			__instance.causeOfDeath = CauseOfDeath.Fan;
+			
+			// Check if we already have a spike prefab.
+			if (_spikePrefab != null)
+			{
+				Instance.Logger.LogFatal("FanRoomDecapitateSoftPatch: Spike prefab already exists, setting.");
+				__instance.spawnPrefab = _spikePrefab;
+				return true;
+			}
+			
+			// Patch the spike trap attach object to not have blood particles.
+			GameObject bodyStickingPoint = Instantiate(__instance.spawnPrefab);
+			bodyStickingPoint.GetComponentsInChildren<ParticleSystem>()
+			                 .ToList()
+			                 .ForEach(particleSystem =>
+            {
+				ParticleSystem.EmissionModule particleEmission = particleSystem.emission;
+				particleEmission.enabled = false;
+				particleSystem.Stop();
+				particleSystem.Clear();
+				particleSystem.SetParticles(new ParticleSystem.Particle[]{});
+				Destroy(particleSystem);
+            });
+			// Disable the audio on the spike trap.
+			bodyStickingPoint.GetComponentsInChildren<AudioSource>().ToList().ForEach(audioSource =>
+			{
+				audioSource.enabled = false;
+			});
+			// Mark the spike trap as DontDestroyOnLoad.
+			DontDestroyOnLoad(bodyStickingPoint);
+			// Send the spike prefab to the void.
+			bodyStickingPoint.transform.position += Vector3.down * 10000;
+			// Update the spike prefab for use in spikes and fans.
+			_spikePrefab = bodyStickingPoint;
+			// Update the spawn prefab on the fan.
+			__instance.spawnPrefab = bodyStickingPoint;
+			
+			return true;
+		}
+		
+		[HarmonyPatch(typeof(ButlerEnemyAI), nameof(ButlerEnemyAI.Start))]
+		[HarmonyPostfix]
+		private static void ButlerBloodParticleSoftPatch(ButlerEnemyAI __instance)
+		{
+			// Remove the particles from the butler's particle emitters.
+			__instance.stabBloodParticle.SetParticles(new ParticleSystem.Particle[]{});
+			__instance.popParticle.SetParticles(new ParticleSystem.Particle[]{});
+		}
+		[HarmonyPatch(typeof(ButlerEnemyAI), nameof(ButlerEnemyAI.StabPlayerClientRpc))]
+		[HarmonyPostfix]
+		private static void ButlerStabParticleSoftPatch(ButlerEnemyAI __instance)
+		{
+			// Abort the particles from the butler blood particle emitter.
+			__instance.stabBloodParticle.Stop();
+			__instance.stabBloodParticle.Clear();
+		}
+		[HarmonyPatch(typeof(ButlerEnemyAI), nameof(ButlerEnemyAI.KillEnemy))]
+		[HarmonyPostfix]
+		private static void ButlerPopParticleSoftPatch(ButlerEnemyAI __instance)
+		{
+			// Abort the particles from the butler pop particle emitter.
+			__instance.popParticle.Stop();
+			__instance.popParticle.Clear();
+		}
+		
+		[HarmonyPatch(typeof(KnifeItem), "ItemActivate")]
+		[HarmonyPostfix]
+		private static void KnifeBloodParticleSoftPatch(KnifeItem __instance)
+		{
+			// Remove the particles from the knife particle emitter.
+			__instance.bloodParticle.SetParticles(new ParticleSystem.Particle[]{});
+			__instance.bloodParticle.Stop();
+			__instance.bloodParticle.Clear();
+		}
+
+		private static GameObject _spikePrefab;
+		private static bool _isFirst = true;
+		[HarmonyPatch(typeof(SpikeRoofTrap), "Start")]
+		[HarmonyPostfix]
+		private static void SpikeTrapBloodParticleSoftPatch(SpikeRoofTrap __instance)
+		{
+			// Check if we already have a spike prefab.
+			if (_spikePrefab != null)
+			{
+				Instance.Logger.LogFatal("FanRoomDecapitateSoftPatch: Spike prefab already exists, setting.");
+				__instance.deadBodyStickingPointPrefab = _spikePrefab;
+				return;
+			}
+			
+			// Patch the spike trap attach object to not have blood particles.
+			GameObject bodyStickingPoint = Instantiate(__instance.deadBodyStickingPointPrefab);
+			bodyStickingPoint.GetComponentsInChildren<ParticleSystem>()
+			                 .ToList()
+			                 .ForEach(particleSystem =>
+			                  {
+				                  ParticleSystem.EmissionModule particleEmission = particleSystem.emission;
+				                  particleEmission.enabled = false;
+				                  particleSystem.Stop();
+				                  particleSystem.Clear();
+				                  particleSystem.SetParticles(new ParticleSystem.Particle[]{});
+				                  Destroy(particleSystem);
+			                  });
+			// Disable the audio on the spike trap.
+			bodyStickingPoint.GetComponentsInChildren<AudioSource>().ToList().ForEach(audioSource =>
+			{
+				audioSource.enabled = false;
+			});
+			// Mark the spike trap as DontDestroyOnLoad.
+			DontDestroyOnLoad(bodyStickingPoint);
+			// Send the spike prefab to the void.
+			bodyStickingPoint.transform.position += Vector3.down * 10000;
+			// Update the spike prefab for use in spikes and fans.
+			_spikePrefab = bodyStickingPoint;
+			// Update the spawn prefab on the fan.
+			__instance.deadBodyStickingPointPrefab = bodyStickingPoint;
+			
+			return;
+			// Todo: Look for way to bypass RW lock on mesh.
+			if (_isFirst == false)
+				return;
+			
+			Transform parentTransform = __instance.transform.parent;
+			for (int i = 0; i < parentTransform.childCount; i++)
+			{
+				Transform child = parentTransform.GetChild(i);
+				if (child.name.Contains("SpikeRoof") == false)
+					continue;
+					
+				// Get the vertices.
+				Vector3[] vertices = child.GetComponent<MeshFilter>().mesh.vertices;
+						
+				// Get the lowest vertex.
+				Instance.Logger.LogFatal($"Lowest Y: {vertices.Min(vertex => vertex.y)}");
+						
+				// Group the vertices, sort them by Y value, then log how many are at each Y-level.
+				List<IGrouping<float, Vector3>> vertexGroups = vertices.GroupBy(vertex => vertex.y).ToList();
+				vertexGroups.Sort((kvp, next) => kvp.Key.CompareTo(next.Key));
+				foreach (IGrouping<float, Vector3> vertexGroup in vertexGroups)
+				{
+					Instance.Logger.LogFatal($"Y: {vertexGroup.Key}, Count: {vertexGroup.Count()}");
+				}
+
+				_isFirst = false;
+				return;
+			}
+		}
+		
+		
+		
 		
 		[HarmonyPatch(typeof(ForestGiantAI), "Start")]
 		[HarmonyPostfix]
@@ -33,7 +196,7 @@ namespace NonLethalCompany
 		
 		[HarmonyPatch(typeof(ForestGiantAI), "EatPlayerAnimation", MethodType.Enumerator)]
 		[HarmonyTranspiler]
-		private static IEnumerable<CodeInstruction> ForestGiantSoftPatch(IEnumerable<CodeInstruction> instructions)
+		private static IEnumerable<CodeInstruction> ForestGiantHardPatch(IEnumerable<CodeInstruction> instructions)
 		{
 			CodeMatcher matcher = new(instructions);
 			
@@ -53,7 +216,7 @@ namespace NonLethalCompany
 
 		[HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.SpawnDeadBody))]
 		[HarmonyTranspiler]
-		private static IEnumerable<CodeInstruction> SpawnBodiesSoftPatch(IEnumerable<CodeInstruction> instructions)
+		private static IEnumerable<CodeInstruction> SpawnBodiesHardPatch(IEnumerable<CodeInstruction> instructions)
 		{
 			CodeMatcher matcher = new(instructions);
 
@@ -80,7 +243,7 @@ namespace NonLethalCompany
 		
 		[HarmonyPatch(typeof(PlayerControllerB), "UpdatePlayerPositionClientRpc")]
 		[HarmonyTranspiler]
-		private static IEnumerable<CodeInstruction> UpdatePositionSoftPatch(IEnumerable<CodeInstruction> instructions)
+		private static IEnumerable<CodeInstruction> UpdatePositionHardPatch(IEnumerable<CodeInstruction> instructions)
 		{
 			CodeMatcher matcher = new(instructions);
 			matcher.MatchForward(false,
@@ -98,7 +261,7 @@ namespace NonLethalCompany
 		
 		[HarmonyPatch(typeof(PlayerControllerB), "DamagePlayerFromOtherClientClientRpc")]
 		[HarmonyTranspiler]
-		private static IEnumerable<CodeInstruction> DamageRPCSoftPatch(IEnumerable<CodeInstruction> instructions)
+		private static IEnumerable<CodeInstruction> DamageRPCHardPatch(IEnumerable<CodeInstruction> instructions)
 		{
 			CodeMatcher matcher = new(instructions);
 			matcher.MatchForward(false,
@@ -147,13 +310,13 @@ namespace NonLethalCompany
 		private static IEnumerable<CodeInstruction> MakeCorpseBloodyHardPatch(IEnumerable<CodeInstruction> instructions)
 		{
 			CodeMatcher matcher = new(instructions);
-
+	
 			// Safety patch to make drop blood do nothing
 			matcher.MatchForward(false,
 			                     new CodeMatch(OpCodes.Ldc_I4_0),
 			                     new CodeMatch(OpCodes.Stloc_0))
 			       .SetAndAdvance(OpCodes.Ret, null);
-
+			
 			return matcher.InstructionEnumeration();
 		}
 
