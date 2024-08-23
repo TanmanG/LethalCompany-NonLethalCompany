@@ -51,7 +51,6 @@ namespace NonLethalCompany
 			// Check if we already have a spike prefab.
 			if (_spikePrefab != null)
 			{
-				Instance.Logger.LogFatal("FanRoomDecapitateSoftPatch: Spike prefab already exists, setting.");
 				__instance.spawnPrefab = _spikePrefab;
 				return true;
 			}
@@ -139,7 +138,6 @@ namespace NonLethalCompany
 			// Check if we already have a spike prefab.
 			if (_spikePrefab != null)
 			{
-				Instance.Logger.LogFatal("FanRoomDecapitateSoftPatch: Spike prefab already exists, setting.");
 				__instance.deadBodyStickingPointPrefab = _spikePrefab;
 				return;
 			}
