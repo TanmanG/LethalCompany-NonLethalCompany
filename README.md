@@ -11,7 +11,7 @@ This mod aims to remove all sources of blood, gore, and dismemberment from the g
 
 ## **Encounter an issue?**
 
-Send me a message on Discord @tanmang, or an email at mangomango.dev@gmail.com
+Send me a message on Discord @gweneg42, or an email at mangomango.dev@gmail.com
 
 
 
